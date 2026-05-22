@@ -10,7 +10,7 @@
   * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, sans-serif; }
   :root {
     --blue-50: #E6F1FB; --blue-200: #85B7EB; --blue-400: #378ADD; --blue-800: #0C447C;
-    --gray-50: #F8F9FA; --gray-100: #F1F3F5; --gray-200: #E9ECEF; --gray-600: #495057; --gray-800: #212529;
+    --gray-50: #F8F9FA; --gray-100: #F1F3F5; --gray-200: #E9ECEF; --gray-400: #CED4DA; --gray-600: #495057; --gray-800: #212529;
     --success: #40C057; --warning: #FFD43B; --danger: #FA5252;
     --sidebar-width: 280px; --header-height: 60px;
   }
@@ -238,7 +238,15 @@
     <h2><i class="ti ti-settings"></i> Configuration</h2>
     <div class="form-group">
       <label>Clé API Mistral</label>
-      <input type="password" id="apiKeyInput" class="form-control" placeholder="sk-...">
+      <div style="display:flex; gap:8px; align-items:center;">
+        <input type="password" id="apiKeyInput" class="form-control" placeholder="sk-..." style="flex:1;">
+        <button type="button" class="btn btn-secondary btn-icon" onclick="toggleApiKeyVisibility()" title="Afficher/Masquer la clé">
+          <i class="ti ti-eye" id="apiKeyToggleIcon"></i>
+        </button>
+      </div>
+      <small style="color:var(--gray-600); display:block; margin-top:5px;">
+        <i class="ti ti-lock"></i> La clé est stockée localement dans votre navigateur (localStorage).
+      </small>
     </div>
     <div class="form-group">
       <label for="maxTokensSlider">Limite de Tokens (Max Generation): <span id="maxTokensValue" style="color:var(--blue-400); font-weight:bold;">4096</span></label>
@@ -501,8 +509,29 @@ function exportConversation() {
 }
 
 // --- Configuration Modal ---
+let apiKeyVisible = false;
+
+function toggleApiKeyVisibility() {
+  const input = document.getElementById('apiKeyInput');
+  const icon = document.getElementById('apiKeyToggleIcon');
+  
+  if (!input || !icon) return;
+  
+  apiKeyVisible = !apiKeyVisible;
+  input.type = apiKeyVisible ? 'text' : 'password';
+  icon.className = apiKeyVisible ? 'ti ti-eye-off' : 'ti ti-eye';
+}
+
 function openConfig() {
   document.getElementById('configModal').style.display = 'flex';
+  // Reset visibility when opening
+  const input = document.getElementById('apiKeyInput');
+  const icon = document.getElementById('apiKeyToggleIcon');
+  if (input && icon) {
+    input.type = 'password';
+    icon.className = 'ti ti-eye';
+    apiKeyVisible = false;
+  }
 }
 
 function closeConfig() {
