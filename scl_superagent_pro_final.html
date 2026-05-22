@@ -1,0 +1,1938 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SCL SuperAgent Pro - TIA Portal</title>
+<!-- Tabler Icons -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+<!-- html2pdf for PDF export -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, sans-serif; }
+  :root {
+    --blue-50: #E6F1FB; --blue-200: #85B7EB; --blue-400: #378ADD; --blue-800: #0C447C;
+    --gray-50: #F8F9FA; --gray-100: #F1F3F5; --gray-200: #E9ECEF; --gray-400: #CED4DA; --gray-600: #495057; --gray-800: #212529;
+    --success: #40C057; --warning: #FFD43B; --danger: #FA5252;
+    --sidebar-width: 280px; --header-height: 60px;
+  }
+  body { display: flex; height: 100vh; background: var(--gray-50); color: var(--gray-800); overflow: hidden; }
+  
+  /* Sidebar */
+  .sidebar { width: var(--sidebar-width); background: var(--blue-800); color: white; display: flex; flex-direction: column; transition: transform 0.3s; z-index: 100; }
+  .sidebar-header { padding: 20px; border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; gap: 10px; }
+  .sidebar-header i { font-size: 24px; color: var(--blue-200); }
+  .sidebar-header h1 { font-size: 18px; font-weight: 600; }
+  .nav-menu { flex: 1; overflow-y: auto; padding: 10px 0; }
+  .nav-item { padding: 12px 20px; cursor: pointer; display: flex; align-items: center; gap: 12px; transition: background 0.2s; color: var(--blue-50); text-decoration: none; }
+  .nav-item:hover, .nav-item.active { background: rgba(255,255,255,0.1); color: white; border-left: 4px solid var(--blue-200); }
+  .nav-item i { font-size: 20px; }
+  .sidebar-footer { padding: 15px; border-top: 1px solid rgba(255,255,255,0.1); font-size: 12px; color: var(--blue-200); text-align: center; }
+  
+  /* Main Content */
+  .main-content { flex: 1; display: flex; flex-direction: column; position: relative; }
+  .top-bar { height: var(--header-height); background: white; border-bottom: 1px solid var(--gray-200); display: flex; align-items: center; justify-content: space-between; padding: 0 20px; }
+  .top-bar-title { font-weight: 600; color: var(--gray-800); display: flex; align-items: center; gap: 10px; }
+  .top-bar-actions { display: flex; gap: 10px; }
+  
+  /* Panels */
+  .panel { display: none; flex: 1; overflow: hidden; padding: 20px; }
+  .panel.active { display: flex; flex-direction: column; }
+  
+  /* Chat Panel */
+  .chat-container { flex: 1; display: flex; flex-direction: column; background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); overflow: hidden; }
+  .chat-messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 15px; }
+  .message { max-width: 85%; padding: 12px 16px; border-radius: 12px; line-height: 1.5; position: relative; animation: fadeIn 0.3s; }
+  .message.user { align-self: flex-end; background: var(--blue-400); color: white; border-bottom-right-radius: 2px; }
+  .message.assistant { align-self: flex-start; background: var(--gray-100); color: var(--gray-800); border-bottom-left-radius: 2px; }
+  .message.system { align-self: center; background: var(--warning); color: var(--gray-800); font-size: 13px; padding: 8px 12px; border-radius: 20px; }
+  .chat-input-area { padding: 15px; border-top: 1px solid var(--gray-200); background: var(--gray-50); display: flex; gap: 10px; }
+  .chat-input { flex: 1; padding: 12px; border: 1px solid var(--gray-200); border-radius: 8px; resize: none; outline: none; font-size: 14px; }
+  .chat-input:focus { border-color: var(--blue-400); box-shadow: 0 0 0 2px var(--blue-50); }
+  .btn { padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: 500; display: flex; align-items: center; gap: 8px; transition: all 0.2s; }
+  .btn-primary { background: var(--blue-400); color: white; }
+  .btn-primary:hover { background: var(--blue-800); }
+  .btn-success { background: var(--success); color: white; }
+  .btn-success:hover { background: #2f9e3d; }
+  .btn-secondary { background: white; border: 1px solid var(--gray-200); color: var(--gray-600); }
+  .btn-secondary:hover { background: var(--gray-100); }
+  .btn-icon { padding: 8px; border-radius: 6px; }
+  
+  /* Code Blocks */
+  pre { background: #282c34; color: #abb2bf; padding: 15px; border-radius: 6px; overflow-x: auto; margin: 10px 0; font-family: 'Consolas', monospace; font-size: 13px; }
+  code { font-family: 'Consolas', monospace; }
+  .message.assistant pre { background: #1e2127; }
+  .copy-btn { float: right; font-size: 12px; padding: 4px 8px; background: rgba(255,255,255,0.1); border: none; color: white; border-radius: 4px; cursor: pointer; }
+  .copy-btn:hover { background: rgba(255,255,255,0.2); }
+
+  /* Feature Panels (Library, Validator, etc.) */
+  .feature-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 20px; padding: 20px; overflow-y: auto; }
+  .feature-card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); cursor: pointer; transition: transform 0.2s; border: 1px solid var(--gray-200); }
+  .feature-card:hover { transform: translateY(-3px); border-color: var(--blue-400); }
+  .feature-card i { font-size: 32px; color: var(--blue-400); margin-bottom: 15px; }
+  .feature-card h3 { font-size: 16px; margin-bottom: 8px; }
+  .feature-card p { font-size: 13px; color: var(--gray-600); line-height: 1.4; }
+  
+  .tool-panel { display: flex; flex-direction: column; height: 100%; }
+  .tool-header { padding: 15px; background: white; border-bottom: 1px solid var(--gray-200); display: flex; justify-content: space-between; align-items: center; }
+  .tool-body { flex: 1; display: flex; overflow: hidden; }
+  .tool-editor { flex: 1; padding: 15px; display: flex; flex-direction: column; border-right: 1px solid var(--gray-200); }
+  .tool-results { flex: 1; padding: 15px; background: var(--gray-50); overflow-y: auto; }
+  textarea.code-editor { flex: 1; width: 100%; padding: 15px; border: 1px solid var(--gray-200); border-radius: 6px; font-family: 'Consolas', monospace; font-size: 13px; resize: none; outline: none; margin-bottom: 15px; }
+  textarea.code-editor:focus { border-color: var(--blue-400); }
+  
+  .result-item { background: white; padding: 15px; border-radius: 6px; margin-bottom: 10px; border-left: 4px solid var(--gray-400); }
+  .result-item.error { border-left-color: var(--danger); }
+  .result-item.warning { border-left-color: var(--warning); }
+  .result-item.success { border-left-color: var(--success); }
+  .result-item.info { border-left-color: var(--blue-400); }
+  .result-title { font-weight: 600; margin-bottom: 5px; display: flex; justify-content: space-between; }
+  .result-score { font-size: 24px; font-weight: bold; color: var(--blue-400); text-align: center; margin: 20px 0; }
+
+  /* Config Modal */
+  .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: none; justify-content: center; align-items: center; z-index: 1000; }
+  .modal { background: white; padding: 25px; border-radius: 12px; width: 90%; max-width: 500px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
+  .modal h2 { margin-bottom: 20px; color: var(--gray-800); }
+  .form-group { margin-bottom: 15px; }
+  .form-group label { display: block; margin-bottom: 8px; font-weight: 500; color: var(--gray-600); }
+  .form-control { width: 100%; padding: 10px; border: 1px solid var(--gray-200); border-radius: 6px; font-size: 14px; }
+  .range-container { display: flex; align-items: center; gap: 15px; }
+  .range-container input { flex: 1; }
+  .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 25px; }
+
+  /* Toast */
+  .toast-container { position: fixed; bottom: 20px; right: 20px; z-index: 2000; display: flex; flex-direction: column; gap: 10px; }
+  .toast { padding: 12px 20px; border-radius: 8px; color: white; font-size: 14px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); animation: slideIn 0.3s; display: flex; align-items: center; gap: 10px; }
+  .toast.success { background: var(--success); }
+  .toast.error { background: var(--danger); }
+  .toast.info { background: var(--blue-400); }
+
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+  
+  /* Responsive */
+  @media (max-width: 768px) {
+    .sidebar { position: fixed; height: 100%; transform: translateX(-100%); }
+    .sidebar.open { transform: translateX(0); }
+    .tool-body { flex-direction: column; }
+    .tool-editor { border-right: none; border-bottom: 1px solid var(--gray-200); height: 50%; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Sidebar -->
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <i class="ti ti-robot"></i>
+    <h1>SCL SuperAgent Pro</h1>
+  </div>
+  <nav class="nav-menu">
+    <a class="nav-item active" onclick="switchPanel('chat')"><i class="ti ti-message"></i> Atomics</a>
+    <a class="nav-item" onclick="switchPanel('library')"><i class="ti ti-books"></i> Bibliothèque SCL</a>
+    <a class="nav-item" onclick="switchPanel('validator')"><i class="ti ti-shield-check"></i> Validateur SCL</a>
+    <a class="nav-item" onclick="switchPanel('optimizer')"><i class="ti ti-zap"></i> Optimiseur Code</a>
+    <a class="nav-item" onclick="switchPanel('documentation')"><i class="ti ti-file-text"></i> Documentation</a>
+    <div style="border-top: 1px solid rgba(255,255,255,0.1); margin: 10px 0;"></div>
+    <a class="nav-item" onclick="openConfig()"><i class="ti ti-settings"></i> Configuration</a>
+    <a class="nav-item" onclick="testAllModules()"><i class="ti ti-test"></i> Tester Modules</a>
+  </nav>
+  <div class="sidebar-footer">
+    v2.1.0 • Localhost Mode<br>
+    Créé par SAVADOGO 72 • &copy; <span id="currentYear"></span>
+  </div>
+</aside>
+
+<!-- Main Content -->
+<main class="main-content">
+  <header class="top-bar">
+    <div class="top-bar-title">
+      <button class="btn btn-icon btn-secondary" onclick="toggleSidebar()" style="display:none;" id="menuToggle"><i class="ti ti-menu"></i></button>
+      <span id="pageTitle">Atomics</span>
+    </div>
+    <div class="top-bar-actions">
+      <button class="btn btn-secondary" onclick="exportConversation()"><i class="ti ti-download"></i> Export</button>
+      <button class="btn btn-secondary" onclick="clearConversation()"><i class="ti ti-trash"></i> Effacer</button>
+    </div>
+  </header>
+
+  <!-- Chat Panel -->
+  <div id="chat" class="panel active">
+    <div class="chat-container">
+      <div class="chat-messages" id="chatMessages">
+        <div class="message assistant">
+          Bonjour ! Je suis votre assistant SCL pour TIA Portal. Comment puis-je vous aider aujourd'hui ?
+        </div>
+      </div>
+      <div class="chat-input-area">
+        <textarea class="chat-input" id="userInput" rows="1" placeholder="Décrivez votre bloc SCL ou posez une question..." onkeydown="if(event.key==='Enter' && !event.shiftKey){event.preventDefault(); sendMessage();}"></textarea>
+        <button class="btn btn-primary" onclick="sendMessage()"><i class="ti ti-send"></i> Envoyer</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Library Panel -->
+  <div id="library" class="panel">
+    <div class="tool-header">
+      <h2>Bibliothèque de Snippets SCL</h2>
+    </div>
+    <div class="feature-grid" id="libraryGrid">
+      <!-- Rempli par JS -->
+    </div>
+  </div>
+
+  <!-- Validator Panel -->
+  <div id="validator" class="panel">
+    <div class="tool-panel">
+      <div class="tool-header">
+        <h2>Validateur SCL Avancé</h2>
+        <div style="display:flex; gap:10px;">
+          <button class="btn btn-primary" onclick="runStandaloneValidator()"><i class="ti ti-check"></i> Analyser</button>
+          <button class="btn btn-success" onclick="fixSCLCode()"><i class="ti ti-wrench"></i> Corriger les erreurs</button>
+        </div>
+      </div>
+      <div class="tool-body">
+        <div class="tool-editor">
+          <textarea class="code-editor" id="validatorInput" placeholder="Collez votre code SCL ici pour analyse..."></textarea>
+        </div>
+        <div class="tool-results" id="validatorResults">
+          <div style="text-align:center; color:var(--gray-600); margin-top:50px;">En attente d'analyse...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Optimizer Panel -->
+  <div id="optimizer" class="panel">
+    <div class="tool-panel">
+      <div class="tool-header">
+        <h2>Optimiseur de Code</h2>
+        <div style="display:flex; gap:10px;">
+          <button class="btn btn-primary" onclick="runStandaloneOptimizer()"><i class="ti ti-wand"></i> Optimiser</button>
+          <button class="btn btn-success" onclick="injectOptimizedCode()"><i class="ti ti-code-plus"></i> Injecter le code optimisé</button>
+        </div>
+      </div>
+      <div class="tool-body">
+        <div class="tool-editor">
+          <textarea class="code-editor" id="optimizerInput" placeholder="Collez votre code SCL à optimiser..."></textarea>
+        </div>
+        <div class="tool-results" id="optimizerResults">
+          <div style="text-align:center; color:var(--gray-600); margin-top:50px;">En attente d'optimisation...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Documentation Panel -->
+  <div id="documentation" class="panel">
+    <div class="tool-panel">
+      <div class="tool-header">
+        <h2>Générateur de Documentation</h2>
+        <div style="display:flex; gap:10px;">
+          <button class="btn btn-primary" onclick="runStandaloneDocGenerator()"><i class="ti ti-file-plus"></i> Générer</button>
+          <button class="btn btn-success" onclick="exportDocPDF()"><i class="ti ti-file-export"></i> Exporter PDF avec procédure</button>
+        </div>
+      </div>
+      <div class="tool-body">
+        <div class="tool-editor">
+          <textarea class="code-editor" id="docInput" placeholder="Collez un bloc SCL pour générer sa documentation..."></textarea>
+        </div>
+        <div class="tool-results" id="docResults">
+          <div style="text-align:center; color:var(--gray-600); margin-top:50px;">En attente de génération...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- Config Modal -->
+<div class="modal-overlay" id="configModal">
+  <div class="modal">
+    <h2><i class="ti ti-settings"></i> Configuration</h2>
+    <div class="form-group">
+      <label>Clé API Mistral</label>
+      <div style="display:flex; gap:8px; align-items:center;">
+        <input type="password" id="apiKeyInput" class="form-control" placeholder="sk-..." style="flex:1;">
+        <button type="button" class="btn btn-secondary btn-icon" onclick="toggleApiKeyVisibility()" title="Afficher/Masquer la clé">
+          <i class="ti ti-eye" id="apiKeyToggleIcon"></i>
+        </button>
+      </div>
+      <small style="color:var(--gray-600); display:block; margin-top:5px;">
+        <i class="ti ti-lock"></i> La clé est stockée localement dans votre navigateur (localStorage).
+      </small>
+    </div>
+    <div class="form-group">
+      <label for="maxTokensSlider">Limite de Tokens (Max Generation): <span id="maxTokensValue" style="color:var(--blue-400); font-weight:bold;">4096</span></label>
+      <div class="range-container">
+        <span style="font-size:12px">512</span>
+        <input type="range" id="maxTokensSlider" min="512" max="8192" step="256" value="4096">
+        <span style="font-size:12px">8192</span>
+      </div>
+      <small style="color:var(--gray-600); display:block; margin-top:5px;">Augmentez cette valeur pour les réponses longues. Attention au temps de réponse.</small>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeConfig()">Annuler</button>
+      <button class="btn btn-primary" onclick="saveConfig()">Sauvegarder</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast Container -->
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+/**
+ * SCL SUPERAGENT PRO - CORE LOGIC
+ * Version 2.1.0 (Corrected & Optimized)
+ */
+
+// --- Global State ---
+const state = {
+  currentPanel: 'chat',
+  isGenerating: false,
+  conversationHistory: []
+};
+
+// --- Configuration ---
+let config = {
+  apiKey: localStorage.getItem('mistral_api_key') || '',
+  maxTokens: parseInt(localStorage.getItem('mistral_max_tokens')) || 4096
+};
+
+// --- Initialization ---
+document.addEventListener('DOMContentLoaded', () => {
+  console.log("🚀 SCL SuperAgent Pro Initialisé");
+  
+  // Load Config UI
+  document.getElementById('apiKeyInput').value = config.apiKey;
+  const slider = document.getElementById('maxTokensSlider');
+  const display = document.getElementById('maxTokensValue');
+  
+  if(slider && display) {
+    slider.value = config.maxTokens;
+    display.textContent = config.maxTokens;
+    
+    // FIX 1: Sauvegarde automatique + Feedback immédiat
+    slider.addEventListener('input', function() {
+      const val = parseInt(this.value);
+      display.textContent = val;
+      config.maxTokens = val;
+      localStorage.setItem('mistral_max_tokens', val.toString());
+      // Petit toast discret
+      showToast(`Tokens: ${val}`, 'info');
+    });
+  }
+
+  // Initialize Library
+  try {
+    renderLibraryCategories();
+    console.log("✅ Bibliothèque initialisée");
+  } catch (e) {
+    console.error("❌ Erreur init bibliothèque:", e);
+  }
+
+  // Mobile menu check
+  if(window.innerWidth <= 768) {
+    document.getElementById('menuToggle').style.display = 'block';
+  }
+});
+
+// --- Core Functions ---
+
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('open');
+}
+
+function switchPanel(panelId) {
+  state.currentPanel = panelId;
+  
+  // Update Nav
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+  const activeNav = document.querySelector(`.nav-item[onclick="switchPanel('${panelId}')"]`);
+  if(activeNav) activeNav.classList.add('active');
+  
+  // Update Panels
+  document.querySelectorAll('.panel').forEach(el => el.classList.remove('active'));
+  document.getElementById(panelId).classList.add('active');
+  
+  // Update Title
+  const titles = {
+    'chat': 'Atomics',
+    'library': 'Bibliothèque SCL',
+    'validator': 'Validateur SCL',
+    'optimizer': 'Optimiseur Code',
+    'documentation': 'Documentation'
+  };
+  document.getElementById('pageTitle').textContent = titles[panelId] || 'SCL Pro';
+  
+  // Close mobile sidebar if open
+  if(window.innerWidth <= 768) {
+    document.getElementById('sidebar').classList.remove('open');
+  }
+}
+
+function showToast(message, type = 'info') {
+  const container = document.getElementById('toastContainer');
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+  
+  let icon = 'ti-info-circle';
+  if(type === 'success') icon = 'ti-check';
+  if(type === 'error') icon = 'ti-alert-circle';
+  
+  toast.innerHTML = `<i class="ti ${icon}"></i> <span>${message}</span>`;
+  container.appendChild(toast);
+  
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    setTimeout(() => toast.remove(), 300);
+  }, 3000);
+}
+
+// --- Chat & API Logic ---
+
+async function sendMessage() {
+  const input = document.getElementById('userInput');
+  const message = input.value.trim();
+  
+  if(!message || state.isGenerating) return;
+  if(!config.apiKey) {
+    showToast('Veuillez configurer votre clé API dans les paramètres', 'error');
+    openConfig();
+    return;
+  }
+  
+  // Add User Message
+  addMessageToChat(message, 'user');
+  input.value = '';
+  state.conversationHistory.push({ role: 'user', content: message });
+  
+  state.isGenerating = true;
+  const loadingId = addMessageToChat('Génération en cours...', 'system');
+  
+  try {
+    // FIX 3: Gestion Timeout API
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 minutes
+    
+    const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${config.apiKey}`
+      },
+      body: JSON.stringify({
+        model: "mistral-large-latest",
+        messages: [
+          { role: "system", content: "Tu es un expert en programmation SCL pour Siemens TIA Portal. Tu génères du code propre, commenté et optimisé. Tu réponds en français." },
+          ...state.conversationHistory
+        ],
+        max_tokens: config.maxTokens,
+        temperature: 0.3
+      }),
+      signal: controller.signal
+    });
+    
+    clearTimeout(timeoutId);
+    
+    if(!response.ok) {
+      const err = await response.json();
+      throw new Error(err.message || 'Erreur API');
+    }
+    
+    const data = await response.json();
+    const aiResponse = data.choices[0].message.content;
+    
+    removeMessage(loadingId);
+    addMessageToChat(aiResponse, 'assistant');
+    state.conversationHistory.push({ role: 'assistant', content: aiResponse });
+    
+  } catch (error) {
+    removeMessage(loadingId);
+    let errorMsg = error.message;
+    if(error.name === 'AbortError') {
+      errorMsg = "Timeout: La génération a pris trop de temps. Essayez de réduire la demande ou augmentez les tokens.";
+    }
+    addMessageToChat(`Erreur: ${errorMsg}`, 'system');
+    showToast('Erreur de génération', 'error');
+  } finally {
+    state.isGenerating = false;
+  }
+}
+
+function addMessageToChat(content, role) {
+  const container = document.getElementById('chatMessages');
+  const id = 'msg-' + Date.now();
+  const div = document.createElement('div');
+  div.className = `message ${role}`;
+  div.id = id;
+  
+  if(role === 'assistant') {
+    div.innerHTML = formatCodeBlocks(content);
+  } else {
+    div.textContent = content;
+  }
+  
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+  return id;
+}
+
+function removeMessage(id) {
+  const el = document.getElementById(id);
+  if(el) el.remove();
+}
+
+function formatCodeBlocks(text) {
+  // Simple regex to wrap code blocks
+  return text.replace(/```(\w+)?([\s\S]*?)```/g, (match, lang, code) => {
+    return `<pre><button class="copy-btn" onclick="copyCode(this)">Copier</button><code class="language-${lang || 'scl'}">${escapeHtml(code.trim())}</code></pre>`;
+  }).replace(/\n/g, '<br>');
+}
+
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+function copyCode(btn) {
+  const code = btn.nextElementSibling.textContent;
+  navigator.clipboard.writeText(code).then(() => {
+    btn.textContent = 'Copié!';
+    setTimeout(() => btn.textContent = 'Copier', 2000);
+  });
+}
+
+function clearConversation() {
+  state.conversationHistory = [];
+  document.getElementById('chatMessages').innerHTML = '<div class="message assistant">Conversation effacée. Nouveau départ !</div>';
+  showToast('Conversation réinitialisée', 'success');
+}
+
+function exportConversation() {
+  const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state.conversationHistory, null, 2));
+  const downloadAnchorNode = document.createElement('a');
+  downloadAnchorNode.setAttribute("href", dataStr);
+  downloadAnchorNode.setAttribute("download", "scl_conversation_" + new Date().toISOString().slice(0,10) + ".json");
+  document.body.appendChild(downloadAnchorNode);
+  downloadAnchorNode.click();
+  downloadAnchorNode.remove();
+  showToast('Export réussi', 'success');
+}
+
+// --- Configuration Modal ---
+let apiKeyVisible = false;
+
+function toggleApiKeyVisibility() {
+  const input = document.getElementById('apiKeyInput');
+  const icon = document.getElementById('apiKeyToggleIcon');
+  
+  if (!input || !icon) return;
+  
+  apiKeyVisible = !apiKeyVisible;
+  input.type = apiKeyVisible ? 'text' : 'password';
+  icon.className = apiKeyVisible ? 'ti ti-eye-off' : 'ti ti-eye';
+}
+
+function openConfig() {
+  document.getElementById('configModal').style.display = 'flex';
+  // Reset visibility when opening
+  const input = document.getElementById('apiKeyInput');
+  const icon = document.getElementById('apiKeyToggleIcon');
+  if (input && icon) {
+    input.type = 'password';
+    icon.className = 'ti ti-eye';
+    apiKeyVisible = false;
+  }
+}
+
+function closeConfig() {
+  document.getElementById('configModal').style.display = 'none';
+}
+
+function saveConfig() {
+  const key = document.getElementById('apiKeyInput').value.trim();
+  if(key) {
+    config.apiKey = key;
+    localStorage.setItem('mistral_api_key', key);
+    showToast('Configuration sauvegardée', 'success');
+    closeConfig();
+  } else {
+    showToast('Clé API invalide', 'error');
+  }
+}
+
+// --- Library System ---
+const EXTENDED_SCL_LIBRARY = {
+  pumps: { 
+    title: 'Pompes & Fluides', 
+    icon: 'ti-droplet', 
+    snippets: [
+      { name: 'Démarrage Pompe', code: 'FUNCTION_BLOCK FB_PumpStart\nVAR_INPUT Start : BOOL; Stop : BOOL; END_VAR\nVAR_OUTPUT Q : BOOL; END_VAR\nQ := Start AND NOT Stop;' },
+      { name: 'Surveillance Débit', code: 'IF Flow < MinFlow THEN\n  Alarm := TRUE;\nEND_IF;' }
+    ]
+  },
+  regulation: { 
+    title: 'Régulation PID', 
+    icon: 'ti-gauge', 
+    snippets: [
+      { name: 'Structure PID', code: 'FUNCTION_BLOCK FB_PID\nVAR_INPUT SetPoint, ProcessVar : REAL; END_VAR\nVAR_OUTPUT Output : REAL; END_VAR\n// Logique PID ici' }
+    ]
+  },
+  safety: { 
+    title: 'Sécurité & Alarmes', 
+    icon: 'ti-shield', 
+    snippets: [
+      { name: 'Arrêt Urgence', code: 'IF EmergencyStop THEN\n  Motor_Q := FALSE;\n  Valve_Q := FALSE;\nEND_IF;' }
+    ]
+  },
+  motors: { 
+    title: 'Moteurs & Variateurs', 
+    icon: 'ti-motorbike', 
+    snippets: [
+      { name: 'Contrôle Vitesse', code: 'Motor_Speed := Ref_Speed * Scale_Factor;' }
+    ]
+  },
+  hvac: { 
+    title: 'Température & HVAC', 
+    icon: 'ti-thermometer', 
+    snippets: [
+      { name: 'Thermostat', code: 'IF Temp < SetPoint - Hysteresis THEN Heater := TRUE;\nELSIF Temp > SetPoint + Hysteresis THEN Heater := FALSE;\nEND_IF;' }
+    ]
+  }
+};
+
+function renderLibraryCategories() {
+  const grid = document.getElementById('libraryGrid');
+  if(!grid) return;
+  
+  grid.innerHTML = '';
+  
+  for(const [key, cat] of Object.entries(EXTENDED_SCL_LIBRARY)) {
+    const card = document.createElement('div');
+    card.className = 'feature-card';
+    card.innerHTML = `
+      <i class="ti ${cat.icon}"></i>
+      <h3>${cat.title}</h3>
+      <p>${cat.snippets.length} snippets disponibles</p>
+    `;
+    card.onclick = () => showSnippets(key);
+    grid.appendChild(card);
+  }
+}
+
+function showSnippets(categoryKey) {
+  const cat = EXTENDED_SCL_LIBRARY[categoryKey];
+  if(!cat) return;
+  
+  switchPanel('chat');
+  const snippetText = cat.snippets.map(s => `// ${s.name}\n${s.code}`).join('\n\n');
+  document.getElementById('userInput').value = `Voici des exemples pour ${cat.title}:\n\n${snippetText}\n\nPeux-tu m'expliquer comment les intégrer?`;
+  showToast(`Catégorie ${cat.title} chargée`, 'info');
+}
+
+// --- Validator System ---
+class SCLValidator {
+  constructor() {
+    this.rules = [
+      { id: 'STRUCT_001', pattern: /FUNCTION\s+\w+:/i, type: 'error', msg: 'Déclaration FUNCTION manquante ou invalide' },
+      { id: 'STRUCT_002', pattern: /END_FUNCTION/i, type: 'error', msg: 'END_FUNCTION manquant' },
+      { id: 'VAR_001', pattern: /VAR_INPUT|VAR_OUTPUT|VAR_IN_OUT|VAR/i, type: 'info', msg: 'Section de variables détectée' },
+      { id: 'LOGIC_001', pattern: /\/\s*0(?:\.0)?(?!\d)/, type: 'error', msg: 'Division par zéro détectée!' },
+      { id: 'TIME_001', pattern: /T#[0-9]+(?:MS|S|M|H|D)/i, type: 'success', msg: 'Format TIME correct' },
+      { id: 'TIME_002', pattern: /T#[^0-9]/i, type: 'error', msg: 'Format TIME invalide (doit commencer par un chiffre)' },
+      { id: 'SYNTAX_001', pattern: /:=/i, type: 'info', msg: 'Assignation SCL correcte (:=)' },
+      { id: 'SYNTAX_002', pattern: /=\s*[^=]/i, type: 'warning', msg: 'Utilisation de "=" au lieu de ":=" pour l\'assignation?' },
+      { id: 'COMMENT_001', pattern: /\(\*[\s\S]*?\*\)/, type: 'info', msg: 'Commentaires présents' },
+      { id: 'LOOP_001', pattern: /FOR\s+\w+\s+:=/i, type: 'info', msg: 'Boucle FOR détectée' },
+      { id: 'LOOP_002', pattern: /END_FOR/i, type: 'error', msg: 'END_FOR manquant pour une boucle FOR' },
+      { id: 'COND_001', pattern: /IF\s+.+THEN/i, type: 'info', msg: 'Condition IF détectée' },
+      { id: 'COND_002', pattern: /END_IF/i, type: 'error', msg: 'END_IF manquant' },
+      { id: 'CASE_001', pattern: /CASE\s+\w+\s+OF/i, type: 'info', msg: 'Instruction CASE détectée' },
+      { id: 'CASE_002', pattern: /END_CASE/i, type: 'error', msg: 'END_CASE manquant' }
+    ];
+  }
+
+  validate(code) {
+    const results = [];
+    let score = 100;
+    
+    this.rules.forEach(rule => {
+      const matches = code.match(rule.pattern);
+      if(matches) {
+        if(rule.type === 'error') score -= 15;
+        if(rule.type === 'warning') score -= 5;
+        
+        results.push({
+          rule: rule.id,
+          type: rule.type,
+          message: rule.msg,
+          context: matches[0]
+        });
+      } else if (rule.type === 'error' && (rule.id.includes('STRUCT') || rule.id.includes('END'))) {
+         // Check specifically for missing end blocks if start exists
+         if(rule.id === 'STRUCT_002' && /FUNCTION/i.test(code) && !/END_FUNCTION/i.test(code)) {
+            results.push({ rule: rule.id, type: 'error', message: 'END_FUNCTION manquant' });
+            score -= 15;
+         }
+      }
+    });
+    
+    return { score: Math.max(0, score), results };
+  }
+}
+
+function runStandaloneValidator() {
+  const code = document.getElementById('validatorInput').value;
+  const resultDiv = document.getElementById('validatorResults');
+  
+  if(!code.trim()) {
+    resultDiv.innerHTML = '<div class="result-item error">Veuillez entrer du code SCL.</div>';
+    return;
+  }
+  
+  const validator = new SCLValidator();
+  const result = validator.validate(code);
+  
+  let html = `<div class="result-score">Score: ${result.score}/100</div>`;
+  
+  if(result.results.length === 0) {
+    html += '<div class="result-item success">Aucune erreur majeure détectée. Structure valide.</div>';
+  } else {
+    result.results.forEach(r => {
+      html += `
+        <div class="result-item ${r.type}">
+          <div class="result-title">
+            <span>${r.rule}</span>
+            <span style="text-transform:uppercase; font-size:11px;">${r.type}</span>
+          </div>
+          <div>${r.message}</div>
+          ${r.context ? `<small style="color:#666; display:block; margin-top:5px; font-family:monospace;">"${r.context}"</small>` : ''}
+        </div>
+      `;
+    });
+  }
+  
+  resultDiv.innerHTML = html;
+}
+
+// --- Optimizer System ---
+class SCLOptimizer {
+  analyze(code) {
+    const suggestions = [];
+    
+    // Detect Nested IFs
+    const ifCount = (code.match(/IF\s+/gi) || []).length;
+    if(ifCount > 2) {
+      suggestions.push({
+        type: 'optimization',
+        title: 'Conditions imbriquées',
+        desc: 'Plusieurs IF détectés. Envisagez d\'utiliser AND/OR ou un CASE.',
+        before: 'IF A THEN\n  IF B THEN...',
+        after: 'IF A AND B THEN...'
+      });
+    }
+    
+    // Detect Magic Numbers
+    const numbers = code.match(/\b\d+(?:\.\d+)?\b/g) || [];
+    const uniqueNumbers = [...new Set(numbers)].filter(n => n !== '0' && n !== '1');
+    if(uniqueNumbers.length > 2) {
+      suggestions.push({
+        type: 'best-practice',
+        title: 'Constantes magiques',
+        desc: `Nombres en dur détectés: ${uniqueNumbers.join(', ')}. Utilisez des CONSTANTes.`,
+        before: 'IF Temp > 85.5 THEN...',
+        after: 'CONSTANT MAX_TEMP : REAL := 85.5;\nIF Temp > MAX_TEMP THEN...'
+      });
+    }
+    
+    // Detect Redundant Assignments
+    if(/:=\s*TRUE.*:=\s*FALSE/s.test(code) || /:=\s*FALSE.*:=\s*TRUE/s.test(code)) {
+       suggestions.push({
+        type: 'logic',
+        title: 'Assignations contradictoires',
+        desc: 'La même variable semble être mise à TRUE puis FALSE (ou inversement) dans le même bloc.',
+        before: 'Q := TRUE;\n...\nQ := FALSE;',
+        after: 'Vérifiez la logique conditionnelle.'
+      });
+    }
+    
+    if(suggestions.length === 0) {
+      suggestions.push({
+        type: 'success',
+        title: 'Code propre',
+        desc: 'Aucune optimisation évidente détectée automatiquement.'
+      });
+    }
+    
+    return suggestions;
+  }
+}
+
+function runStandaloneOptimizer() {
+  const code = document.getElementById('optimizerInput').value;
+  const resultDiv = document.getElementById('optimizerResults');
+  
+  if(!code.trim()) {
+    resultDiv.innerHTML = '<div class="result-item error">Veuillez entrer du code SCL.</div>';
+    return;
+  }
+  
+  const optimizer = new SCLOptimizer();
+  const suggestions = optimizer.analyze(code);
+  
+  let html = '<h3>Suggestions d\'optimisation</h3>';
+  suggestions.forEach(s => {
+    let icon = s.type === 'success' ? 'ti-check' : 'ti-wand';
+    let color = s.type === 'success' ? 'success' : 'info';
+    
+    html += `
+      <div class="result-item ${color}">
+        <div class="result-title"><i class="ti ${icon}"></i> ${s.title}</div>
+        <p>${s.desc}</p>
+        ${s.before ? `<pre style="font-size:11px; margin-top:5px;">// Avant:\n${s.before}\n\n// Après:\n${s.after || ''}</pre>` : ''}
+      </div>
+    `;
+  });
+  
+  resultDiv.innerHTML = html;
+}
+
+// --- Documentation Generator ---
+class DocGenerator {
+  generate(code) {
+    const nameMatch = code.match(/FUNCTION(?:_BLOCK)?\s+(\w+):/i);
+    const name = nameMatch ? nameMatch[1] : 'Inconnu';
+    
+    const inputs = [];
+    const outputs = [];
+    const inouts = [];
+    const vars = [];
+    
+    // Simple parsing
+    let currentSection = '';
+    const lines = code.split('\n');
+    
+    lines.forEach(line => {
+      if(/VAR_INPUT/i.test(line)) currentSection = 'input';
+      else if(/VAR_OUTPUT/i.test(line)) currentSection = 'output';
+      else if(/VAR_IN_OUT/i.test(line)) currentSection = 'inout';
+      else if(/VAR\s/i.test(line) || /VAR_LOCAL/i.test(line)) currentSection = 'local';
+      else if(/END_VAR/i.test(line)) currentSection = '';
+      else if(currentSection && line.includes(':')) {
+        const parts = line.split(':');
+        const varName = parts[0].trim();
+        const varType = parts[1].split(';')[0].trim();
+        if(varName) {
+          const obj = { name: varName, type: varType };
+          if(currentSection === 'input') inputs.push(obj);
+          if(currentSection === 'output') outputs.push(obj);
+          if(currentSection === 'inout') inouts.push(obj);
+          if(currentSection === 'local') vars.push(obj);
+        }
+      }
+    });
+    
+    return {
+      name,
+      inputs,
+      outputs,
+      inouts,
+      localVars: vars,
+      description: `Bloc SCL généré automatiquement.`
+    };
+  }
+}
+
+function runStandaloneDocGenerator() {
+  const code = document.getElementById('docInput').value;
+  const resultDiv = document.getElementById('docResults');
+  
+  if(!code.trim()) {
+    resultDiv.innerHTML = '<div class="result-item error">Veuillez entrer du code SCL.</div>';
+    return;
+  }
+  
+  const gen = new DocGenerator();
+  const doc = gen.generate(code);
+  
+  let html = `
+    <div class="result-item info">
+      <h2>Fonction: ${doc.name}</h2>
+      <p>${doc.description}</p>
+    </div>
+    
+    <h3>Entrées (INPUT)</h3>
+    ${doc.inputs.length ? '<table style="width:100%; border-collapse:collapse; font-size:13px;"><tr style="background:#eee;"><th style="padding:8px; text-align:left;">Nom</th><th>Type</th></tr>' + doc.inputs.map(i => `<tr><td style="padding:8px; border-bottom:1px solid #ddd;">${i.name}</td><td style="padding:8px; border-bottom:1px solid #ddd;">${i.type}</td></tr>`).join('') + '</table>' : '<p>Aucune entrée.</p>'}
+    
+    <h3 style="margin-top:20px;">Sorties (OUTPUT)</h3>
+    ${doc.outputs.length ? '<table style="width:100%; border-collapse:collapse; font-size:13px;"><tr style="background:#eee;"><th style="padding:8px; text-align:left;">Nom</th><th>Type</th></tr>' + doc.outputs.map(i => `<tr><td style="padding:8px; border-bottom:1px solid #ddd;">${i.name}</td><td style="padding:8px; border-bottom:1px solid #ddd;">${i.type}</td></tr>`).join('') + '</table>' : '<p>Aucune sortie.</p>'}
+    
+    <h3 style="margin-top:20px;">Variables Locales</h3>
+    ${doc.localVars.length ? '<ul>' + doc.localVars.map(v => `<li><b>${v.name}</b> : ${v.type}</li>`).join('') + '</ul>' : '<p>Aucune variable locale.</p>'}
+  `;
+  
+  resultDiv.innerHTML = html;
+}
+
+// --- Test All Modules Function ---
+function testAllModules() {
+  const testCode = `FUNCTION Test_Module : BOOL
+VAR_INPUT 
+  Start : BOOL;
+  Speed : REAL := 150.5;
+END_VAR
+VAR_OUTPUT
+  Running : BOOL;
+END_VAR
+BEGIN
+  IF Start THEN
+    IF Speed > 100.0 THEN
+      Running := TRUE;
+    ELSE
+      Running := FALSE;
+    END_IF;
+  ELSE
+    Running := FALSE;
+  END_IF;
+  
+  // Division dangereuse
+  Test_Module := Speed / 0; 
+  
+END_FUNCTION`;
+
+  // Fill inputs
+  document.getElementById('validatorInput').value = testCode;
+  document.getElementById('optimizerInput').value = testCode;
+  document.getElementById('docInput').value = testCode;
+  
+  // Run tests
+  runStandaloneValidator();
+  runStandaloneOptimizer();
+  runStandaloneDocGenerator();
+  
+  // Switch to validator tab to show result
+  switchPanel('validator');
+  showToast('Tests exécutés avec code exemple. Vérifiez les onglets.', 'success');
+  console.log("🧪 Tests lancés. Voir résultats dans les panneaux.");
+}
+
+// --- GLOBAL FIX: Force Event Binding & Error Handling ---
+(function() {
+  console.log("🔧 Initialisation forcée des événements globaux...");
+
+  // Exposer explicitement les fonctions critiques dans window pour les onclick HTML
+  const criticalFunctions = [
+    'sendMessage', 'toggleSidebar', 'switchPanel', 'openConfig', 'closeConfig', 
+    'saveConfig', 'exportConversation', 'clearConversation', 'copyCode',
+    'runStandaloneValidator', 'runStandaloneOptimizer', 'runStandaloneDocGenerator', 
+    'testAllModules', 'showSnippets'
+  ];
+
+  criticalFunctions.forEach(funcName => {
+    if (typeof window[funcName] === 'undefined') {
+      console.warn(`⚠️ Fonction globale manquante : ${funcName}`);
+    } else {
+      console.log(`✅ Fonction exposée : ${funcName}`);
+    }
+  });
+
+  // Gestion robuste des erreurs non capturées
+  window.onerror = function(msg, url, line, col, error) {
+    console.error(`❌ Erreur Globale : ${msg}`);
+    console.error(`   Ligne: ${line}, Colonne: ${col}`);
+    // Afficher un toast d'erreur critique
+    const toastContainer = document.getElementById('toastContainer');
+    if(toastContainer) {
+      const toast = document.createElement('div');
+      toast.className = 'toast error';
+      toast.innerHTML = `<i class="ti ti-alert-circle"></i> <span>Erreur JS: ${msg.substring(0, 50)}...</span>`;
+      toastContainer.appendChild(toast);
+      setTimeout(() => toast.remove(), 5000);
+    }
+    return false;
+  };
+  
+  // Fallback si DOMContentLoaded a été manqué
+  if(document.readyState === 'complete') {
+     console.log("🔄 Re-triggering init logic...");
+     // Ré-initialiser le slider si nécessaire
+     const slider = document.getElementById('maxTokensSlider');
+     if(slider && !slider.hasAttribute('listener-added')) {
+        slider.addEventListener('input', function() {
+          const val = parseInt(this.value);
+          document.getElementById('maxTokensValue').textContent = val;
+          config.maxTokens = val;
+          localStorage.setItem('mistral_max_tokens', val.toString());
+        });
+        slider.setAttribute('listener-added', 'true');
+     }
+     renderLibraryCategories();
+  }
+})();
+
+// ============================================
+        // BIBLIOTHÈQUE DE SNIPPETS
+        // ============================================
+        
+        function loadSnippets() {
+            const container = document.getElementById('snippetList');
+            container.innerHTML = '';
+            
+            snippets.forEach(snippet => {
+                const div = document.createElement('div');
+                div.className = 'snippet-item';
+                div.innerHTML = `
+                    <div class="snippet-category">${snippet.category.toUpperCase()}</div>
+                    <div class="snippet-name">${snippet.name}</div>
+                `;
+                div.onclick = () => {
+                    selectedSnippet = snippet;
+                    showToast(`Snippet "${snippet.name}" sélectionné`, 'info');
+                };
+                container.appendChild(div);
+            });
+        }
+
+        function filterSnippets() {
+            const filter = document.getElementById('snippetCategoryFilter').value;
+            const container = document.getElementById('libraryContent');
+            container.innerHTML = '';
+            
+            const filtered = filter === 'all' ? snippets : snippets.filter(s => s.category === filter);
+            
+            filtered.forEach(snippet => {
+                const card = document.createElement('div');
+                card.className = 'snippet-item';
+                card.style.padding = '1rem';
+                card.innerHTML = `
+                    <div class="snippet-category">${snippet.category.toUpperCase()}</div>
+                    <div class="snippet-name" style="font-size: 1.1rem; margin: 0.5rem 0;">${snippet.name}</div>
+                    <pre style="background: var(--bg-primary); padding: 0.5rem; border-radius: 4px; overflow-x: auto; font-size: 0.8rem; max-height: 150px; overflow-y: auto;">${escapeHtml(snippet.code.substring(0, 200))}${snippet.code.length > 200 ? '...' : ''}</pre>
+                `;
+                card.onclick = () => {
+                    selectedSnippet = snippet;
+                    showToast(`Snippet "${snippet.name}" sélectionné`, 'info');
+                };
+                container.appendChild(card);
+            });
+        }
+
+        function insertSelectedSnippet() {
+            if (!selectedSnippet) {
+                showToast('Veuillez sélectionner un snippet', 'warning');
+                return;
+            }
+            
+            if (validators.editor) {
+                const current = validators.editor.state.doc.toString();
+                validators.editor.dispatch({
+                    changes: { from: 0, to: current.length, insert: selectedSnippet.code }
+                });
+            }
+            
+            showToast(`Snippet "${selectedSnippet.name}" inséré`, 'success');
+            switchTab('validator');
+        }
+
+        // ============================================
+        // VALIDATEUR SCL AVANCÉ (8+ règles critiques)
+        // ============================================
+        
+        function validateCode() {
+            const code = validators.editor ? validators.editor.state.doc.toString() : '';
+            
+            if (!code.trim()) {
+                showToast('Veuillez entrer du code à valider', 'warning');
+                return;
+            }
+            
+            const issues = [];
+            let score = 100;
+            
+            // Règle TEMP_001: Variable TEMP sans #
+            const tempPattern = /\bVAR_TEMP[\s\S]*?END_VAR/gi;
+            const tempBlocks = code.match(tempPattern) || [];
+            tempBlocks.forEach(block => {
+                const varMatches = block.match(/\b([a-zA-Z_][a-zA-Z0-9_]*)\s*:/gi) || [];
+                varMatches.forEach(match => {
+                    const varName = match.replace(':', '').trim();
+                    const withoutHash = new RegExp(`\\b${varName}\\b(?!\\s*:)`, 'g');
+                    const usages = code.match(withoutHash) || [];
+                    usages.forEach(usage => {
+                        if (!usage.startsWith('#')) {
+                            issues.push({
+                                code: 'TEMP_001',
+                                type: 'error',
+                                message: `Variable TEMP "${varName}" utilisée sans le préfixe # (trouvé: "${usage}")`,
+                                line: getCodeLine(code, usage)
+                            });
+                            score -= 10;
+                        }
+                    });
+                });
+            });
+            
+            // Vérification simple: recherche de variables qui semblent être des TEMP utilisées sans #
+            const lines = code.split('\n');
+            let inTempBlock = false;
+            let tempVars = [];
+            
+            lines.forEach((line, idx) => {
+                if (/VAR_TEMP/i.test(line)) inTempBlock = true;
+                if (/END_VAR/i.test(line)) {
+                    inTempBlock = false;
+                    tempVars = [];
+                }
+                if (inTempBlock && /:\s*(Bool|Int|Real|String|DWord|Array)/i.test(line)) {
+                    const match = line.match(/^\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*:/);
+                    if (match) tempVars.push(match[1]);
+                }
+                
+                // Vérifier si une variable TEMP est utilisée sans #
+                tempVars.forEach(tv => {
+                    const pattern = new RegExp(`\\b${tv}\\b`, 'g');
+                    if (pattern.test(line) && !line.includes('#' + tv) && !line.includes(':')) {
+                        // Éviter les faux positifs dans la déclaration elle-même
+                        if (!lines.slice(Math.max(0, idx-5), idx).some(l => l.includes(tv + ':'))) {
+                            // Déjà géré ci-dessus, skip
+                        }
+                    }
+                });
+            });
+            
+            // Règle CALL_001: Appel FB sans instance DB
+            const fbCallPattern = /(?<!["\w])([A-Z][a-zA-Z0-9_]*)(?=\s*\([^)]*\))/gi;
+            const fbCalls = code.match(fbCallPattern) || [];
+            const knownFBs = ['TON', 'TOF', 'TP', 'CTU', 'CTD', 'CTUD', 'R_TRIG', 'F_TRIG'];
+            
+            fbCalls.forEach(call => {
+                if (!knownFBs.includes(call.toUpperCase())) {
+                    // Vérifier s'il y a une instance DB
+                    const callContext = code.match(new RegExp(`${call}\\s*\\([^)]*\\)`, 'gi')) || [];
+                    callContext.forEach(ctx => {
+                        if (!/instanceDb\s*[:=]/i.test(ctx) && !/\bDB\d+\b/i.test(ctx)) {
+                            issues.push({
+                                code: 'CALL_001',
+                                type: 'warning',
+                                message: `Appel du FB "${call}" sans instance DB explicite`,
+                                line: getCodeLine(code, ctx)
+                            });
+                            score -= 5;
+                        }
+                    });
+                }
+            });
+            
+            // Règle TYPE_001: Comparaison REAL avec = ou <>
+            const realComparePattern = /\b([a-zA-Z_#][a-zA-Z0-9_#]*)\s*(=|<>)\s*([0-9.]+|[a-zA-Z_#][a-zA-Z0-9_#]*)/g;
+            let match;
+            while ((match = realComparePattern.exec(code)) !== null) {
+                // Vérifier si c'est une variable REAL (approximatif)
+                const varDecl = code.match(new RegExp(`${match[1]}\\s*:\\s*(Real|LReal)`, 'i'));
+                if (varDecl || /[0-9]+\.[0-9]+/.test(match[3])) {
+                    issues.push({
+                        code: 'TYPE_001',
+                        type: 'warning',
+                        message: `Comparaison exacte d'un REAL détectée: "${match[0]}". Préférer une comparaison avec seuil (ex: ABS(a-b) < epsilon)`,
+                        line: getCodeLine(code, match[0])
+                    });
+                    score -= 8;
+                }
+            }
+            
+            // Règle ARRAY_001: Accès tableau hors limites
+            const arrayAccessPattern = /([a-zA-Z_][a-zA-Z0-9_]*)\s*\[\s*(\d+)\s*\]/g;
+            const arrayDecls = code.match(/ARRAY\s*\[\s*(\d+)\s*\.\.\s*(\d+)\s*\]/gi) || [];
+            
+            arrayDecls.forEach(decl => {
+                const bounds = decl.match(/(\d+)\.\.(\d+)/);
+                if (bounds) {
+                    const min = parseInt(bounds[1]);
+                    const max = parseInt(bounds[2]);
+                    
+                    let arrMatch;
+                    while ((arrMatch = arrayAccessPattern.exec(code)) !== null) {
+                        const idx = parseInt(arrMatch[2]);
+                        if (idx < min || idx > max) {
+                            issues.push({
+                                code: 'ARRAY_001',
+                                type: 'error',
+                                message: `Accès au tableau hors limites: index ${idx} (bornes: ${min}..${max})`,
+                                line: getCodeLine(code, arrMatch[0])
+                            });
+                            score -= 15;
+                        }
+                    }
+                }
+            });
+            
+            // Règle DB_001: Accès direct DB sans variable symbolique
+            const directDBPattern = /DB\d+\.DB[WXBD]\d+/gi;
+            const dbAccesses = code.match(directDBPattern) || [];
+            dbAccesses.forEach(access => {
+                issues.push({
+                    code: 'DB_001',
+                    type: 'info',
+                    message: `Accès direct au DB détecté: "${access}". Préférer les variables symboliques pour une meilleure maintenabilité.`,
+                    line: getCodeLine(code, access)
+                });
+                score -= 3;
+            });
+            
+            // Règle LOOP_003: Boucle FOR avec pas nul
+            const forLoopPattern = /FOR\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*:=\s*(\d+)\s+TO\s+(\d+)\s+BY\s+(\d+)/gi;
+            let forMatch;
+            while ((forMatch = forLoopPattern.exec(code)) !== null) {
+                const step = parseInt(forMatch[4]);
+                if (step === 0) {
+                    issues.push({
+                        code: 'LOOP_003',
+                        type: 'error',
+                        message: `Boucle FOR avec pas nul (BY 0) - boucle infinie potentielle`,
+                        line: getCodeLine(code, forMatch[0])
+                    });
+                    score -= 20;
+                }
+            }
+            
+            // Règle VAR_002: Variable non initialisée dans VAR
+            const varBlocks = code.match(/(?<!VAR_(?:INPUT|OUTPUT|TEMP|IN_OUT))\s*VAR\s+[\s\S]*?END_VAR/gi) || [];
+            varBlocks.forEach(block => {
+                const varLines = block.split('\n');
+                varLines.forEach(line => {
+                    if (/:\s*(Bool|Int|Real|DInt|String)/i.test(line) && !/:=\s*/.test(line)) {
+                        const varName = line.match(/^\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*:/);
+                        if (varName) {
+                            issues.push({
+                                code: 'VAR_002',
+                                type: 'info',
+                                message: `Variable "${varName[1]}" déclarée sans valeur par défaut`,
+                                line: getCodeLine(code, line)
+                            });
+                            score -= 2;
+                        }
+                    }
+                });
+            });
+            
+            // Règle SYNTAX_003: Utilisation de = au lieu de :=
+            // Chercher des assignations potentielles avec = au lieu de :=
+            const assignPattern = /^([^/].*?)\s+([a-zA-Z_#][a-zA-Z0-9_#]*)\s*=\s*([^=;]+);/gm;
+            let assignMatch;
+            while ((assignMatch = assignPattern.exec(code)) !== null) {
+                if (!assignMatch[0].includes('IF') && !assignMatch[0].includes('WHILE') && !assignMatch[0].includes('=')) {
+                    issues.push({
+                        code: 'SYNTAX_003',
+                        type: 'error',
+                        message: `Utilisation de "=" au lieu de ":=" pour une assignation: "${assignMatch[0].substring(0, 50)}..."`,
+                        line: getCodeLine(code, assignMatch[0])
+                    });
+                    score -= 10;
+                }
+            }
+            
+            // Afficher les résultats
+            displayValidationResults(issues, Math.max(0, score));
+        }
+
+        function getCodeLine(code, text) {
+            const lines = code.split('\n');
+            for (let i = 0; i < lines.length; i++) {
+                if (lines[i].includes(text)) {
+                    return i + 1;
+                }
+            }
+            return '?';
+        }
+
+        function displayValidationResults(issues, score) {
+            const resultsDiv = document.getElementById('validationResults');
+            const scoreDiv = document.getElementById('validationScore');
+            const issueList = document.getElementById('issueList');
+            
+            resultsDiv.style.display = 'block';
+            
+            // Score avec classe couleur
+            scoreDiv.textContent = `Score: ${score}/100`;
+            scoreDiv.className = 'validation-score ' + 
+                (score >= 80 ? 'score-excellent' : 
+                 score >= 60 ? 'score-good' : 
+                 score >= 40 ? 'score-warning' : 'score-error');
+            
+            // Liste des problèmes
+            issueList.innerHTML = '';
+            if (issues.length === 0) {
+                issueList.innerHTML = '<div class="issue-item" style="border-color: var(--success);">✅ Aucun problème détecté!</div>';
+            } else {
+                issues.forEach(issue => {
+                    const div = document.createElement('div');
+                    div.className = `issue-item issue-${issue.type}`;
+                    div.innerHTML = `
+                        <span class="issue-code">${issue.code}</span>
+                        <strong>${issue.type.toUpperCase()}</strong> - Ligne ${issue.line}<br>
+                        ${issue.message}
+                    `;
+                    issueList.appendChild(div);
+                });
+            }
+            
+            logToConsole(`Validation terminée: ${score}/100 (${issues.length} problèmes)`, score >= 80 ? 'success' : 'warning');
+        }
+
+        function fillValidatorExample() {
+            const example = `FUNCTION_BLOCK "TestFB"
+VAR_INPUT
+    start : Bool;
+    stop : Bool;
+END_VAR
+VAR_OUTPUT
+    running : Bool;
+END_VAR
+VAR_TEMP
+    tempVar : Int; (* Variable temporaire *)
+END_VAR
+VAR
+    counter : Int; (* Non initialisée *)
+    myArray : ARRAY[1..5] OF Int;
+END_VAR
+
+(* Exemple avec plusieurs problèmes intentionnels *)
+
+// TEMP_001: Utilisation de tempVar sans #
+tempVar := 10;
+
+// CALL_001: Appel FB sans instance
+MyCustomFB(start);
+
+// TYPE_001: Comparaison REAL avec =
+#realValue := 3.14;
+IF #realValue = 3.14 THEN
+    running := TRUE;
+END_IF;
+
+// ARRAY_001: Accès hors limites
+myArray[10] := 100; (* Hors limites! *)
+
+// DB_001: Accès direct DB
+DB10.DBW0 := 50;
+
+// LOOP_003: Boucle avec pas nul
+FOR #i := 1 TO 10 BY 0 DO
+    counter := counter + 1;
+END_FOR;
+
+// SYNTAX_003: = au lieu de :=
+counter = counter + 1;
+
+running := tempVar > 5;
+END_FUNCTION_BLOCK`;
+
+            if (validators.editor) {
+                validators.editor.dispatch({
+                    changes: { from: 0, to: validators.editor.state.doc.length, insert: example }
+                });
+            }
+            
+            showToast('Exemple chargé dans le validateur', 'info');
+        }
+
+        function clearValidator() {
+            if (validators.editor) {
+                validators.editor.dispatch({
+                    changes: { from: 0, to: validators.editor.state.doc.length, insert: '' }
+                });
+            }
+            document.getElementById('validationResults').style.display = 'none';
+        }
+
+        // ============================================
+        // OPTIMISEUR DE CODE (avec transformations réelles)
+        // ============================================
+        
+        let optimizationResult = null;
+
+        function analyzeOptimization() {
+            const code = optimizers.editor ? optimizers.editor.state.doc.toString() : '';
+            
+            if (!code.trim()) {
+                showToast('Veuillez entrer du code à optimiser', 'warning');
+                return;
+            }
+            
+            let optimized = code;
+            const changes = [];
+            
+            // Transformation 1: Fusion de IF imbriqués
+            const nestedIfPattern = /IF\s+([^(]+)\s+THEN\s+IF\s+([^(]+)\s+THEN\s+([\s\S]*?)\s+END_IF\s+END_IF/gi;
+            let match;
+            while ((match = nestedIfPattern.exec(code)) !== null) {
+                const condition1 = match[1].trim();
+                const condition2 = match[2].trim();
+                const body = match[3].trim();
+                const merged = `IF ${condition1} AND ${condition2} THEN\n    ${body}\nEND_IF`;
+                optimized = optimized.replace(match[0], merged);
+                changes.push({
+                    type: 'Fusion IF',
+                    before: match[0].substring(0, 80) + '...',
+                    after: merged.substring(0, 80) + '...'
+                });
+            }
+            
+            // Transformation 2: Remplacement de constantes magiques
+            const magicNumbers = code.match(/\b(?:[2-9]|[1-9]\d+)\b(?!\s*:|\s*TO\s|\s*BY\s)/g) || [];
+            const uniqueNumbers = [...new Set(magicNumbers)].filter(n => n !== '0' && n !== '1');
+            
+            if (uniqueNumbers.length > 0) {
+                let constantsSection = 'CONSTANT\n';
+                uniqueNumbers.forEach((num, idx) => {
+                    const constName = `CONST_${num}`;
+                    constantsSection += `    ${constName} := ${num};\n`;
+                    // Remplacer dans le code (sauf dans les déclarations)
+                    const regex = new RegExp(`\\b${num}\\b(?!\\s*:=)`, 'g');
+                    optimized = optimized.replace(regex, constName);
+                });
+                constantsSection += 'END_CONSTANT\n\n';
+                
+                // Ajouter au début si pas déjà présent
+                if (!optimized.includes('CONSTANT')) {
+                    optimized = constantsSection + optimized;
+                    changes.push({
+                        type: 'Constantes magiques',
+                        before: `${uniqueNumbers.length} nombres magiques dispersés`,
+                        after: `Section CONSTANT créée avec ${uniqueNumbers.length} constantes`
+                    });
+                }
+            }
+            
+            // Transformation 3: Simplification de booléens
+            optimized = optimized.replace(/=\s*TRUE\b/gi, '');
+            optimized = optimized.replace(/=\s*FALSE\b/gi, 'NOT ');
+            
+            if (code !== optimized) {
+                changes.push({
+                    type: 'Simplification booléenne',
+                    before: 'x = TRUE / x = FALSE',
+                    after: 'x / NOT x'
+                });
+            }
+            
+            // Afficher le diff
+            if (changes.length > 0) {
+                optimizationResult = { original: code, optimized, changes };
+                
+                document.getElementById('diffBefore').textContent = code;
+                document.getElementById('diffAfter').textContent = optimized;
+                document.getElementById('diffContainer').style.display = 'grid';
+                document.getElementById('applyOptBtn').disabled = false;
+                
+                showToast(`${changes.length} optimisations trouvées`, 'success');
+                logToConsole(`Optimisations: ${changes.map(c => c.type).join(', ')}`, 'info');
+            } else {
+                showToast('Aucune optimisation automatique trouvée', 'info');
+                document.getElementById('diffContainer').style.display = 'none';
+                document.getElementById('applyOptBtn').disabled = true;
+            }
+        }
+
+        function applyOptimization() {
+            if (!optimizationResult) {
+                showToast('Aucune optimisation à appliquer', 'warning');
+                return;
+            }
+            
+            if (optimizers.editor) {
+                optimizers.editor.dispatch({
+                    changes: { from: 0, to: optimizers.editor.state.doc.length, insert: optimizationResult.optimized }
+                });
+            }
+            
+            showToast('Optimisation appliquée avec succès', 'success');
+            document.getElementById('diffContainer').style.display = 'none';
+            document.getElementById('applyOptBtn').disabled = true;
+            optimizationResult = null;
+        }
+
+        function fillOptimizerExample() {
+            const example = `FUNCTION_BLOCK "OptimizeMe"
+VAR_INPUT
+    conditionA : Bool;
+    conditionB : Bool;
+    value : Real;
+END_VAR
+VAR_OUTPUT
+    output1 : Bool;
+    output2 : Bool;
+END_VAR
+
+(* IF imbriqués à fusionner *)
+IF conditionA THEN
+    IF conditionB THEN
+        output1 := TRUE;
+    END_IF;
+END_IF;
+
+(* Constantes magiques *)
+IF value > 100 THEN
+    output2 := TRUE;
+END_IF;
+
+value := value * 3.14159;
+
+(* Booléens inutiles *)
+IF output1 = TRUE THEN
+    output2 := FALSE;
+END_IF;
+
+IF output2 = FALSE THEN
+    output1 := TRUE;
+END_IF;
+
+END_FUNCTION_BLOCK`;
+
+            if (optimizers.editor) {
+                optimizers.editor.dispatch({
+                    changes: { from: 0, to: optimizers.editor.state.doc.length, insert: example }
+                });
+            }
+            
+            showToast('Exemple chargé dans l\'optimiseur', 'info');
+        }
+
+        function clearOptimizer() {
+            if (optimizers.editor) {
+                optimizers.editor.dispatch({
+                    changes: { from: 0, to: optimizers.editor.state.doc.length, insert: '' }
+                });
+            }
+            document.getElementById('diffContainer').style.display = 'none';
+            document.getElementById('applyOptBtn').disabled = true;
+            optimizationResult = null;
+        }
+
+        // ============================================
+        // GÉNÉRATEUR DE DOCUMENTATION AUGMENTÉE
+        // ============================================
+        
+        let currentDocMarkdown = '';
+
+        function generateDocumentation() {
+            const code = docs.editor ? docs.editor.state.doc.toString() : '';
+            
+            if (!code.trim()) {
+                showToast('Veuillez entrer du code à documenter', 'warning');
+                return;
+            }
+            
+            let markdown = `# Documentation SCL - Généré automatiquement\n\n`;
+            markdown += `**Date:** ${new Date().toLocaleDateString('fr-FR')}\n`;
+            markdown += `**Version TIA Portal:** ${config.tiaVersion}\n\n`;
+            markdown += `---\n\n`;
+            
+            // Extraire le nom du bloc
+            const fbMatch = code.match(/(?:FUNCTION_BLOCK|FUNCTION)\s+"?([^"\s]+)"?(?:\s*:\s*(\w+))?/i);
+            if (fbMatch) {
+                markdown += `## 📦 ${fbMatch[1]}\n\n`;
+                if (fbMatch[2]) {
+                    markdown += `**Type de retour:** ${fbMatch[2]}\n\n`;
+                }
+            }
+            
+            // Extraire les sections VAR
+            const varSections = [
+                { pattern: /VAR_INPUT([\s\S]*?)END_VAR/gi, name: 'Entrées', icon: '📥' },
+                { pattern: /VAR_OUTPUT([\s\S]*?)END_VAR/gi, name: 'Sorties', icon: '📤' },
+                { pattern: /VAR_IN_OUT([\s\S]*?)END_VAR/gi, name: 'Entrées/Sorties', icon: '🔄' },
+                { pattern: /VAR_TEMP([\s\S]*?)END_VAR/gi, name: 'Variables Temporaires', icon: '⏱️' },
+                { pattern: /(?<!VAR_(?:INPUT|OUTPUT|TEMP|IN_OUT))\s*VAR\s+([\s\S]*?)END_VAR/gi, name: 'Variables Internes', icon: '💾' }
+            ];
+            
+            varSections.forEach(section => {
+                const matches = code.match(section.pattern);
+                if (matches) {
+                    markdown += `### ${section.icon} ${section.name}\n\n`;
+                    markdown += `| Variable | Type | Description |\n`;
+                    markdown += `|----------|------|-------------|\n`;
+                    
+                    matches.forEach(match => {
+                        const lines = match.split('\n');
+                        let prevComment = '';
+                        
+                        lines.forEach(line => {
+                            // Extraire les commentaires
+                            const commentMatch = line.match(/\(\*\s*(.*?)\s*\*\)/) || line.match(/\/\/\s*(.*)/);
+                            if (commentMatch) {
+                                prevComment = commentMatch[1] || commentMatch[2] || '';
+                            }
+                            
+                            // Extraire les déclarations de variables
+                            const varMatch = line.match(/^\s*([a-zA-Z_#][a-zA-Z0-9_#]*)\s*:\s*([^(;\n]+)/);
+                            if (varMatch) {
+                                const varName = varMatch[1];
+                                const varType = varMatch[2].replace(/;.*/, '').trim();
+                                const description = prevComment || '-';
+                                markdown += `| \`${varName}\` | ${varType} | ${description} |\n`;
+                                prevComment = '';
+                            }
+                        });
+                    });
+                    
+                    markdown += `\n`;
+                }
+            });
+            
+            // Extraire la logique principale
+            const logicStart = code.indexOf('END_VAR');
+            if (logicStart !== -1) {
+                const logic = code.substring(logicStart + 7).trim();
+                if (logic) {
+                    markdown += `### ⚙️ Logique Principale\n\n`;
+                    markdown += `\`\`\`scl\n${logic}\n\`\`\`\n\n`;
+                }
+            }
+            
+            // Statistiques
+            const lines = code.split('\n');
+            const codeLines = lines.filter(l => l.trim() && !l.trim().startsWith('//') && !l.trim().startsWith('(*'));
+            const commentLines = lines.filter(l => l.trim().startsWith('//') || l.trim().startsWith('(*'));
+            
+            markdown += `---\n\n`;
+            markdown += `## 📊 Statistiques\n\n`;
+            markdown += `- **Total lignes:** ${lines.length}\n`;
+            markdown += `- **Lignes de code:** ${codeLines.length}\n`;
+            markdown += `- **Lignes de commentaires:** ${commentLines.length}\n`;
+            markdown += `- **Taux de commentaire:** ${Math.round((commentLines.length / lines.length) * 100)}%\n`;
+            
+            // Afficher la documentation
+            currentDocMarkdown = markdown;
+            const docOutput = document.getElementById('docOutput');
+            docOutput.innerHTML = marked.parse(markdown);
+            docOutput.style.display = 'block';
+            
+            showToast('Documentation générée avec succès', 'success');
+            logToConsole('Documentation générée', 'info');
+        }
+
+        function copyDocumentation() {
+            if (!currentDocMarkdown) {
+                showToast('Aucune documentation à copier', 'warning');
+                return;
+            }
+            
+            navigator.clipboard.writeText(currentDocMarkdown).then(() => {
+                showToast('Documentation copiée dans le presse-papier', 'success');
+            }).catch(() => {
+                showToast('Erreur lors de la copie', 'error');
+            });
+        }
+
+        function printDocumentation() {
+            window.print();
+        }
+
+        function fillDocExample() {
+            const example = `FUNCTION_BLOCK "MotorControl"
+VAR_INPUT
+    (* Commande de démarrage *)
+    start : Bool;
+    (* Commande d'arrêt *)
+    stop : Bool;
+    // Vitesse de consigne en RPM
+    speedSetpoint : Real;
+END_VAR
+VAR_OUTPUT
+    (* État du moteur *)
+    motorRunning : Bool;
+    (* Vitesse actuelle *)
+    actualSpeed : Real;
+    (* Défaut actif *)
+    fault : Bool;
+END_VAR
+VAR_TEMP
+    tempValue : Real;
+    counter : Int;
+END_VAR
+VAR
+    (* Mémoire marche/arrêt *)
+    memory : Bool;
+    (* Timer de défaut *)
+    faultTimer : TIME;
+END_VAR
+
+(* Logique de contrôle *)
+IF #start AND NOT #stop THEN
+    #memory := TRUE;
+ELSIF #stop THEN
+    #memory := FALSE;
+END_IF;
+
+#motorRunning := #memory;
+
+(* Calcul de vitesse *)
+#actualSpeed := #speedSetpoint * 0.95;
+
+END_FUNCTION_BLOCK`;
+
+            if (docs.editor) {
+                docs.editor.dispatch({
+                    changes: { from: 0, to: docs.editor.state.doc.length, insert: example }
+                });
+            }
+            
+            showToast('Exemple chargé dans le générateur de documentation', 'info');
+        }
+
+        function clearDoc() {
+            if (docs.editor) {
+                docs.editor.dispatch({
+                    changes: { from: 0, to: docs.editor.state.doc.length, insert: '' }
+                });
+            }
+            document.getElementById('docOutput').style.display = 'none';
+            currentDocMarkdown = '';
+        }
+
+        // ============================================
+        // GESTION DE PROJETS (IndexedDB)
+        // ============================================
+        
+        const DB_NAME = 'SCLSuperAgentPro';
+        const DB_VERSION = 1;
+        let db = null;
+
+        function initDB() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open(DB_NAME, DB_VERSION);
+                request.onerror = () => reject(request.error);
+                request.onsuccess = () => { db = request.result; resolve(db); };
+                request.onupgradeneeded = (event) => {
+                    const database = event.target.result;
+                    if (!database.objectStoreNames.contains('projects')) {
+                        database.createObjectStore('projects', { keyPath: 'id', autoIncrement: true });
+                    }
+                };
+            });
+        }
+
+        async function loadProjects() {
+            try {
+                await initDB();
+                const transaction = db.transaction(['projects'], 'readonly');
+                const store = transaction.objectStore('projects');
+                const request = store.getAll();
+                request.onsuccess = () => {
+                    const projects = request.result;
+                    const select = document.getElementById('projectSelect');
+                    select.innerHTML = '<option value="">-- Sélectionner --</option>';
+                    projects.forEach(p => {
+                        const option = document.createElement('option');
+                        option.value = p.id;
+                        option.textContent = p.name;
+                        select.appendChild(option);
+                    });
+                };
+            } catch (error) {
+                logToConsole('Erreur chargement projets: ' + error.message, 'error');
+            }
+        }
+
+        async function saveCurrentProject() {
+            const name = prompt('Nom du projet:');
+            if (!name) return;
+            const projectData = {
+                name: name,
+                validatorCode: validators.editor ? validators.editor.state.doc.toString() : '',
+                optimizerCode: optimizers.editor ? optimizers.editor.state.doc.toString() : '',
+                docCode: docs.editor ? docs.editor.state.doc.toString() : '',
+                chatHistory: chatHistory,
+                config: { ...config },
+                savedAt: new Date().toISOString()
+            };
+            if (projectData.config) delete projectData.config.apiKey;
+            try {
+                await initDB();
+                const transaction = db.transaction(['projects'], 'readwrite');
+                const store = transaction.objectStore('projects');
+                if (currentProject) { projectData.id = currentProject.id; store.put(projectData); }
+                else { store.add(projectData); }
+                transaction.oncomplete = () => { showToast('Projet sauvegardé', 'success'); loadProjects(); };
+            } catch (error) { showToast('Erreur sauvegarde: ' + error.message, 'error'); }
+        }
+
+        async function loadProject(id) {
+            if (!id) return;
+            try {
+                await initDB();
+                const transaction = db.transaction(['projects'], 'readonly');
+                const store = transaction.objectStore('projects');
+                const request = store.get(parseInt(id));
+                request.onsuccess = () => {
+                    const project = request.result;
+                    if (project) {
+                        currentProject = project;
+                        if (validators.editor) validators.editor.dispatch({ changes: { from: 0, to: validators.editor.state.doc.length, insert: project.validatorCode || '' } });
+                        if (optimizers.editor) optimizers.editor.dispatch({ changes: { from: 0, to: optimizers.editor.state.doc.length, insert: project.optimizerCode || '' } });
+                        if (docs.editor) docs.editor.dispatch({ changes: { from: 0, to: docs.editor.state.doc.length, insert: project.docCode || '' } });
+                        chatHistory = project.chatHistory || [];
+                        restoreChat();
+                        if (project.config) config = { ...config, ...project.config };
+                        showToast('Projet chargé: ' + project.name, 'success');
+                    }
+                };
+            } catch (error) { showToast('Erreur chargement: ' + error.message, 'error'); }
+        }
+
+        function newProject() {
+            currentProject = null;
+            document.getElementById('projectSelect').value = '';
+            clearValidator(); clearOptimizer(); clearDoc(); clearChat();
+            showToast('Nouveau projet créé', 'info');
+        }
+
+        function exportProject() {
+            if (!currentProject) { showToast('Aucun projet à exporter', 'warning'); return; }
+            downloadFile(currentProject.name.replace(/\s+/g, '_') + '_export.json', JSON.stringify(currentProject, null, 2));
+            showToast('Projet exporté', 'success');
+        }
+
+        function importProject(input) {
+            const file = input.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                try {
+                    const project = JSON.parse(e.target.result);
+                    await initDB();
+                    const transaction = db.transaction(['projects'], 'readwrite');
+                    const store = transaction.objectStore('projects');
+                    store.add(project);
+                    transaction.oncomplete = () => { showToast('Projet importé', 'success'); loadProjects(); };
+                } catch (error) { showToast('Erreur import: ' + error.message, 'error'); }
+            };
+            reader.readAsText(file);
+        }
+
+        function downloadFile(filename, content) {
+            const blob = new Blob([content], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url; a.download = filename; a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function restoreChat() {
+            const container = document.getElementById('chatMessages');
+            container.innerHTML = '';
+            chatHistory.forEach(msg => addChatMessage(msg.content, msg.role));
+        }
+
+        // ============================================
+        // TESTS UNITAIRES
+        // ============================================
+        function runSelfTest() {
+            logToConsole('=== TESTS UNITAIRES ===', 'info');
+            let passed = 0, failed = 0;
+            
+            // Test TEMP_001
+            validators.editor?.dispatch({ changes: { from: 0, to: validators.editor.state.doc.length, insert: 'VAR_TEMP\n    v:Int;\nEND_VAR\nv:=1;' } });
+            validateCode();
+            if (document.getElementById('issueList').innerHTML.includes('TEMP_001')) { passed++; logToConsole('✅ TEMP_001 OK', 'success'); } else { failed++; logToConsole('❌ TEMP_001 FAIL', 'error'); }
+            
+            // Test ARRAY_001
+            validators.editor?.dispatch({ changes: { from: 0, to: validators.editor.state.doc.length, insert: 'VAR arr:ARRAY[1..5] OF Int; END_VAR\narr[10]:=1;' } });
+            validateCode();
+            if (document.getElementById('issueList').innerHTML.includes('ARRAY_001')) { passed++; logToConsole('✅ ARRAY_001 OK', 'success'); } else { failed++; logToConsole('❌ ARRAY_001 FAIL', 'error'); }
+            
+            // Test LOOP_003
+            validators.editor?.dispatch({ changes: { from: 0, to: validators.editor.state.doc.length, insert: 'FOR i:=1 TO 10 BY 0 DO x:=x+1; END_FOR;' } });
+            validateCode();
+            if (document.getElementById('issueList').innerHTML.includes('LOOP_003')) { passed++; logToConsole('✅ LOOP_003 OK', 'success'); } else { failed++; logToConsole('❌ LOOP_003 FAIL', 'error'); }
+            
+            // Test DB_001
+            validators.editor?.dispatch({ changes: { from: 0, to: validators.editor.state.doc.length, insert: 'DB10.DBW0:=50;' } });
+            validateCode();
+            if (document.getElementById('issueList').innerHTML.includes('DB_001')) { passed++; logToConsole('✅ DB_001 OK', 'success'); } else { failed++; logToConsole('❌ DB_001 FAIL', 'error'); }
+            
+            // Test Optimiseur IF
+            optimizers.editor?.dispatch({ changes: { from: 0, to: optimizers.editor.state.doc.length, insert: 'IF A THEN IF B THEN C:=TRUE; END_IF; END_IF;' } });
+            analyzeOptimization();
+            if (optimizationResult && optimizationResult.changes.some(c => c.type === 'Fusion IF')) { passed++; logToConsole('✅ OPT-IF OK', 'success'); } else { failed++; logToConsole('❌ OPT-IF FAIL', 'error'); }
+            
+            // Test Documentation
+            docs.editor?.dispatch({ changes: { from: 0, to: docs.editor.state.doc.length, insert: 'FUNCTION_BLOCK "T"\nVAR_INPUT (* comment *)\n x:Bool;\nEND_VAR\nEND_FUNCTION_BLOCK' } });
+            generateDocumentation();
+            if (currentDocMarkdown.includes('T') && currentDocMarkdown.includes('x')) { passed++; logToConsole('✅ DOC OK', 'success'); } else { failed++; logToConsole('❌ DOC FAIL', 'error'); }
+            
+            logToConsole('RÉSULTATS: ' + passed + '/6 tests passés', passed === 6 ? 'success' : 'warning');
+            showToast(passed + '/6 tests passés', passed === 6 ? 'success' : 'warning');
+        }
+
+        // ============================================
+        // RACCOURCIS CLAVIER
+        // ============================================
+        function handleGlobalKeydown(event) {
+            if (event.ctrlKey && event.shiftKey && event.key === 'V') { event.preventDefault(); switchTab('validator'); setTimeout(validateCode, 100); }
+            if (event.ctrlKey && event.shiftKey && event.key === 'O') { event.preventDefault(); switchTab('optimizer'); setTimeout(analyzeOptimization, 100); }
+            if (event.ctrlKey && event.shiftKey && event.key === 'D') { event.preventDefault(); switchTab('documentation'); setTimeout(generateDocumentation, 100); }
+        }
+
+        // ============================================
+        // UTILITAIRES
+        // ============================================
+        function escapeHtml(text) { const div = document.createElement('div'); div.textContent = text; return div.innerHTML; }
+        
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = 'toast toast-' + type;
+            toast.textContent = message;
+            container.appendChild(toast);
+            setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 3000);
+        }
+
+        function logToConsole(message, type = 'info') {
+            const panel = document.getElementById('consolePanel');
+            const line = document.createElement('div');
+            line.className = 'console-line ' + type;
+            line.textContent = '[' + new Date().toLocaleTimeString() + '] ' + message;
+            panel.appendChild(line);
+            panel.scrollTop = panel.scrollHeight;
+        }
+
+        /*
+         * ================================================================
+         * NOTE DE SÉCURITÉ POUR DÉPLOIEMENT PRODUCTION
+         * ================================================================
+         * Pour un déploiement en production, il est CRUCIAL de ne jamais
+         * exposer la clé API Mistral côté client. Configurez un proxy backend:
+         * 
+         * Exemple Node.js minimal:
+         * 
+         * const express = require('express');
+         * const fetch = require('node-fetch');
+         * const app = express();
+         * app.use(express.json());
+         * 
+         * app.post('/api/chat', async (req, res) => {
+         *     const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
+         *         method: 'POST',
+         *         headers: {
+         *             'Content-Type': 'application/json',
+         *             'Authorization': 'Bearer ' + process.env.MISTRAL_API_KEY
+         *         },
+         *         body: JSON.stringify(req.body)
+         *     });
+         *     const data = await response.json();
+         *     res.json(data);
+         * });
+         * 
+         * app.listen(3000);
+         * 
+         * Puis remplacez l'URL API dans ce fichier par '/api/chat'
+         * ================================================================
+         */
+
+</script>
+</body>
+</html>
