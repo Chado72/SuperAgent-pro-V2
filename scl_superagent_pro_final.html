@@ -283,59 +283,92 @@
 <script>
 /**
  * SCL SUPERAGENT PRO - CORE LOGIC
- * Version 2.1.0 (Corrected & Optimized)
+ * Version 2.1.0 (Production Ready)
+ * Industrial-grade SCL assistant for TIA Portal
  */
 
-// --- Global State ---
+// ============================================
+// GLOBAL STATE & CONFIGURATION
+// ============================================
 const state = {
   currentPanel: 'chat',
   isGenerating: false,
-  conversationHistory: []
+  conversationHistory: [],
+  apiKeyVisible: false
 };
 
-// --- Configuration ---
-let config = {
+const config = {
   apiKey: localStorage.getItem('mistral_api_key') || '',
   maxTokens: parseInt(localStorage.getItem('mistral_max_tokens')) || 4096
 };
 
-// --- Initialization ---
+// Editor instances (lazy loaded)
+const editors = {
+  validator: null,
+  optimizer: null,
+  doc: null
+};
+
+// Results storage
+const results = {
+  optimization: null,
+  documentation: ''
+};
+
+// ============================================
+// INITIALIZATION
+// ============================================
 document.addEventListener('DOMContentLoaded', () => {
-  console.log("🚀 SCL SuperAgent Pro Initialisé");
+  console.log("🚀 SCL SuperAgent Pro v2.1.0 Initialisé");
   
-  // Load Config UI
-  document.getElementById('apiKeyInput').value = config.apiKey;
+  // Initialize Config UI
+  initConfigUI();
+  
+  // Initialize Library
+  renderLibraryCategories();
+  
+  // Mobile menu check
+  if(window.innerWidth <= 768) {
+    document.getElementById('menuToggle').style.display = 'block';
+  }
+  
+  // Set current year in footer
+  const yearEl = document.getElementById('currentYear');
+  if(yearEl) yearEl.textContent = new Date().getFullYear();
+  
+  // Global error handler
+  window.onerror = handleGlobalError;
+  
+  console.log("✅ Initialisation terminée");
+});
+
+function handleGlobalError(msg, url, line, col, error) {
+  console.error(`❌ Erreur Globale: ${msg}`);
+  console.error(`   Ligne: ${line}, Colonne: ${col}`);
+  showToast(`Erreur: ${msg.substring(0, 50)}...`, 'error');
+  return false;
+}
+
+function initConfigUI() {
+  const apiKeyInput = document.getElementById('apiKeyInput');
   const slider = document.getElementById('maxTokensSlider');
   const display = document.getElementById('maxTokensValue');
+  
+  if(apiKeyInput) apiKeyInput.value = config.apiKey;
   
   if(slider && display) {
     slider.value = config.maxTokens;
     display.textContent = config.maxTokens;
     
-    // FIX 1: Sauvegarde automatique + Feedback immédiat
     slider.addEventListener('input', function() {
       const val = parseInt(this.value);
       display.textContent = val;
       config.maxTokens = val;
       localStorage.setItem('mistral_max_tokens', val.toString());
-      // Petit toast discret
       showToast(`Tokens: ${val}`, 'info');
     });
   }
-
-  // Initialize Library
-  try {
-    renderLibraryCategories();
-    console.log("✅ Bibliothèque initialisée");
-  } catch (e) {
-    console.error("❌ Erreur init bibliothèque:", e);
-  }
-
-  // Mobile menu check
-  if(window.innerWidth <= 768) {
-    document.getElementById('menuToggle').style.display = 'block';
-  }
-});
+}
 
 // --- Core Functions ---
 
@@ -522,28 +555,26 @@ function exportConversation() {
 }
 
 // --- Configuration Modal ---
-let apiKeyVisible = false;
-
 function toggleApiKeyVisibility() {
   const input = document.getElementById('apiKeyInput');
   const icon = document.getElementById('apiKeyToggleIcon');
   
   if (!input || !icon) return;
   
-  apiKeyVisible = !apiKeyVisible;
-  input.type = apiKeyVisible ? 'text' : 'password';
-  icon.className = apiKeyVisible ? 'ti ti-eye-off' : 'ti ti-eye';
+  state.apiKeyVisible = !state.apiKeyVisible;
+  input.type = state.apiKeyVisible ? 'text' : 'password';
+  icon.className = state.apiKeyVisible ? 'ti ti-eye-off' : 'ti ti-eye';
 }
 
 function openConfig() {
   document.getElementById('configModal').style.display = 'flex';
-  // Reset visibility when opening
+  // Reset visibility when opening - security first
   const input = document.getElementById('apiKeyInput');
   const icon = document.getElementById('apiKeyToggleIcon');
   if (input && icon) {
     input.type = 'password';
     icon.className = 'ti ti-eye';
-    apiKeyVisible = false;
+    state.apiKeyVisible = false;
   }
 }
 
@@ -552,14 +583,16 @@ function closeConfig() {
 }
 
 function saveConfig() {
-  const key = document.getElementById('apiKeyInput').value.trim();
-  if(key) {
+  const keyInput = document.getElementById('apiKeyInput');
+  const key = keyInput ? keyInput.value.trim() : '';
+  
+  if(key && key.startsWith('sk-')) {
     config.apiKey = key;
     localStorage.setItem('mistral_api_key', key);
     showToast('Configuration sauvegardée', 'success');
     closeConfig();
   } else {
-    showToast('Clé API invalide', 'error');
+    showToast('Clé API invalide (doit commencer par sk-)', 'error');
   }
 }
 
@@ -632,54 +665,113 @@ function showSnippets(categoryKey) {
   showToast(`Catégorie ${cat.title} chargée`, 'info');
 }
 
-// --- Validator System ---
+// --- Validator System - Enhanced with Industrial Rules ---
 class SCLValidator {
   constructor() {
     this.rules = [
-      { id: 'STRUCT_001', pattern: /FUNCTION\s+\w+:/i, type: 'error', msg: 'Déclaration FUNCTION manquante ou invalide' },
-      { id: 'STRUCT_002', pattern: /END_FUNCTION/i, type: 'error', msg: 'END_FUNCTION manquant' },
-      { id: 'VAR_001', pattern: /VAR_INPUT|VAR_OUTPUT|VAR_IN_OUT|VAR/i, type: 'info', msg: 'Section de variables détectée' },
-      { id: 'LOGIC_001', pattern: /\/\s*0(?:\.0)?(?!\d)/, type: 'error', msg: 'Division par zéro détectée!' },
-      { id: 'TIME_001', pattern: /T#[0-9]+(?:MS|S|M|H|D)/i, type: 'success', msg: 'Format TIME correct' },
+      // Structure rules
+      { id: 'STRUCT_001', pattern: /FUNCTION(?:_BLOCK)?\s+\w+/i, type: 'info', msg: 'Déclaration FUNCTION/FB détectée' },
+      { id: 'STRUCT_002', pattern: /END_FUNCTION/i, type: 'success', msg: 'END_FUNCTION présent' },
+      { id: 'STRUCT_003', pattern: /BEGIN/i, type: 'info', msg: 'Section BEGIN détectée' },
+      
+      // Variable section rules
+      { id: 'VAR_001', pattern: /VAR_INPUT/i, type: 'info', msg: 'Section VAR_INPUT présente' },
+      { id: 'VAR_002', pattern: /VAR_OUTPUT/i, type: 'info', msg: 'Section VAR_OUTPUT présente' },
+      { id: 'VAR_003', pattern: /VAR_IN_OUT/i, type: 'info', msg: 'Section VAR_IN_OUT présente' },
+      { id: 'VAR_004', pattern: /VAR_TEMP/i, type: 'info', msg: 'Section VAR_TEMP présente' },
+      
+      // Critical errors
+      { id: 'LOGIC_001', pattern: /\/\s*0(?:\.0)?(?!\d)/, type: 'error', msg: '⚠️ Division par zéro détectée!' },
       { id: 'TIME_002', pattern: /T#[^0-9]/i, type: 'error', msg: 'Format TIME invalide (doit commencer par un chiffre)' },
-      { id: 'SYNTAX_001', pattern: /:=/i, type: 'info', msg: 'Assignation SCL correcte (:=)' },
-      { id: 'SYNTAX_002', pattern: /=\s*[^=]/i, type: 'warning', msg: 'Utilisation de "=" au lieu de ":=" pour l\'assignation?' },
-      { id: 'COMMENT_001', pattern: /\(\*[\s\S]*?\*\)/, type: 'info', msg: 'Commentaires présents' },
-      { id: 'LOOP_001', pattern: /FOR\s+\w+\s+:=/i, type: 'info', msg: 'Boucle FOR détectée' },
-      { id: 'LOOP_002', pattern: /END_FOR/i, type: 'error', msg: 'END_FOR manquant pour une boucle FOR' },
+      
+      // Syntax checks
+      { id: 'SYNTAX_001', pattern: /:=/i, type: 'success', msg: 'Assignation SCL correcte (:=)' },
+      { id: 'SYNTAX_002', pattern: /\bIF\b.*\bTHEN\b/i, type: 'info', msg: 'Condition IF...THEN correcte' },
+      
+      // Time format validation
+      { id: 'TIME_001', pattern: /T#(?:\d+[HMSD]|\d+\.\d+[HMSD])/i, type: 'success', msg: 'Format TIME correct' },
+      
+      // Comments
+      { id: 'COMMENT_001', pattern: /\(\*[\s\S]*?\*\)/, type: 'info', msg: 'Commentaires structurés présents' },
+      { id: 'COMMENT_002', pattern: /\/\/.*/, type: 'info', msg: 'Commentaires ligne présents' },
+      
+      // Control structures
+      { id: 'LOOP_001', pattern: /FOR\s+\w+\s*:=/i, type: 'info', msg: 'Boucle FOR détectée' },
+      { id: 'LOOP_002', pattern: /END_FOR/i, type: 'success', msg: 'END_FOR présent' },
       { id: 'COND_001', pattern: /IF\s+.+THEN/i, type: 'info', msg: 'Condition IF détectée' },
-      { id: 'COND_002', pattern: /END_IF/i, type: 'error', msg: 'END_IF manquant' },
+      { id: 'COND_002', pattern: /END_IF/i, type: 'success', msg: 'END_IF présent' },
       { id: 'CASE_001', pattern: /CASE\s+\w+\s+OF/i, type: 'info', msg: 'Instruction CASE détectée' },
-      { id: 'CASE_002', pattern: /END_CASE/i, type: 'error', msg: 'END_CASE manquant' }
+      { id: 'CASE_002', pattern: /END_CASE/i, type: 'success', msg: 'END_CASE présent' },
+      { id: 'WHILE_001', pattern: /WHILE\s+.+DO/i, type: 'info', msg: 'Boucle WHILE détectée' },
+      { id: 'WHILE_002', pattern: /END_WHILE/i, type: 'success', msg: 'END_WHILE présent' },
+      
+      // Warnings for potential issues
+      { id: 'WARN_001', pattern: /=\s*[^=]/i, type: 'warning', msg: 'Vérifier: utilisation de "=" au lieu de ":="' }
     ];
   }
 
   validate(code) {
     const results = [];
     let score = 100;
+    let errorCount = 0;
+    let warningCount = 0;
     
+    // First pass: check all rules
     this.rules.forEach(rule => {
       const matches = code.match(rule.pattern);
       if(matches) {
-        if(rule.type === 'error') score -= 15;
-        if(rule.type === 'warning') score -= 5;
+        if(rule.type === 'error') {
+          score -= 15;
+          errorCount++;
+        }
+        if(rule.type === 'warning') {
+          score -= 5;
+          warningCount++;
+        }
         
         results.push({
           rule: rule.id,
           type: rule.type,
           message: rule.msg,
-          context: matches[0]
+          context: matches[0].substring(0, 50)
         });
-      } else if (rule.type === 'error' && (rule.id.includes('STRUCT') || rule.id.includes('END'))) {
-         // Check specifically for missing end blocks if start exists
-         if(rule.id === 'STRUCT_002' && /FUNCTION/i.test(code) && !/END_FUNCTION/i.test(code)) {
-            results.push({ rule: rule.id, type: 'error', message: 'END_FUNCTION manquant' });
-            score -= 15;
-         }
       }
     });
     
-    return { score: Math.max(0, score), results };
+    // Second pass: check for missing end blocks
+    const structureChecks = [
+      { start: /FUNCTION/i, end: /END_FUNCTION/i, rule: 'STRUCT_END_FUNC', msg: 'END_FUNCTION manquant' },
+      { start: /IF\s+/i, end: /END_IF/i, rule: 'STRUCT_END_IF', msg: 'END_IF manquant' },
+      { start: /FOR\s+/i, end: /END_FOR/i, rule: 'STRUCT_END_FOR', msg: 'END_FOR manquant' },
+      { start: /CASE\s+/i, end: /END_CASE/i, rule: 'STRUCT_END_CASE', msg: 'END_CASE manquant' },
+      { start: /WHILE\s+/i, end: /END_WHILE/i, rule: 'STRUCT_END_WHILE', msg: 'END_WHILE manquant' }
+    ];
+    
+    structureChecks.forEach(check => {
+      const hasStart = check.start.test(code);
+      const hasEnd = check.end.test(code);
+      if(hasStart && !hasEnd) {
+        results.push({ rule: check.rule, type: 'error', message: check.msg });
+        score -= 20;
+        errorCount++;
+      }
+    });
+    
+    // Check for VAR...END_VAR blocks
+    const varBlocks = (code.match(/VAR(?:_\w+)?[\s\S]*?(?:END_VAR|$)/gi) || []);
+    varBlocks.forEach(block => {
+      if(!/END_VAR/i.test(block)) {
+        results.push({ rule: 'STRUCT_END_VAR', type: 'error', message: 'END_VAR manquant pour un bloc VAR' });
+        score -= 15;
+        errorCount++;
+      }
+    });
+    
+    return { 
+      score: Math.max(0, score), 
+      results,
+      stats: { errors: errorCount, warnings: warningCount, checks: results.length }
+    };
   }
 }
 
@@ -688,7 +780,7 @@ function runStandaloneValidator() {
   const resultDiv = document.getElementById('validatorResults');
   
   if(!code.trim()) {
-    resultDiv.innerHTML = '<div class="result-item error">Veuillez entrer du code SCL.</div>';
+    resultDiv.innerHTML = '<div class="result-item error"><i class="ti ti-alert-circle"></i> Veuillez entrer du code SCL.</div>';
     return;
   }
   
@@ -698,7 +790,7 @@ function runStandaloneValidator() {
   let html = `<div class="result-score">Score: ${result.score}/100</div>`;
   
   if(result.results.length === 0) {
-    html += '<div class="result-item success">Aucune erreur majeure détectée. Structure valide.</div>';
+    html += '<div class="result-item success"><i class="ti ti-check"></i> Code valide. Aucune erreur detectee.</div>';
   } else {
     result.results.forEach(r => {
       html += `
@@ -708,13 +800,20 @@ function runStandaloneValidator() {
             <span style="text-transform:uppercase; font-size:11px;">${r.type}</span>
           </div>
           <div>${r.message}</div>
-          ${r.context ? `<small style="color:#666; display:block; margin-top:5px; font-family:monospace;">"${r.context}"</small>` : ''}
+          ${r.context ? `<small style="color:#666; display:block; margin-top:5px; font-family:monospace;">"${escapeHtml(r.context)}"</small>` : ''}
         </div>
       `;
     });
   }
   
   resultDiv.innerHTML = html;
+}
+
+// Helper function for building result items
+function buildResultItem(r) {
+  const icons = { error: 'ti-alert-circle', warning: 'ti-alert-triangle', success: 'ti-check', info: 'ti-info-circle' };
+  return `<div class="result-item ${r.type}"><div class="result-title"><span><i class="ti ${icons[r.type] || 'ti-circle'}"></i> ${r.rule}</span><span style="text-transform:uppercase; font-size:11px;">${r.type}</span></div><div style="margin-top:5px;">${r.message}</div>${r.context ? `<small style="color:#666; display:block; margin-top:5px; font-family:monospace;">"${escapeHtml(r.context)}"</small>` : ''}</div>`;
+}
 }
 
 // --- Optimizer System ---
